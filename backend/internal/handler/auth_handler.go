@@ -83,7 +83,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		"name":       user.Name,
 		"email":      user.Email,
 		"photo_url":  user.PhotoURL,
-		"is_admin":   user.IsAdmin,
+		"is_admin":   service.IsAdminEmail(user.Email),
 		"created_at": user.CreatedAt,
 	})
 }

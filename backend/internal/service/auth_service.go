@@ -36,7 +36,7 @@ func (s *AuthService) HandleCallback(ctx context.Context, code string) (string, 
 	}
 
 	// Override is_admin from env whitelist
-	user.IsAdmin = isAdminEmail(user.Email)
+	user.IsAdmin = IsAdminEmail(user.Email)
 
 	token, err := generateJWT(user)
 	if err != nil {
@@ -62,7 +62,7 @@ func generateJWT(user *model.User) (string, error) {
 	claims := JWTClaims{
 		UserID:  user.ID,
 		Email:   user.Email,
-		IsAdmin: isAdminEmail(user.Email),
+		IsAdmin: IsAdminEmail(user.Email),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -93,7 +93,9 @@ func ParseJWT(tokenStr string) (*JWTClaims, error) {
 	return claims, nil
 }
 
-func isAdminEmail(email string) bool {
+// IsAdminEmail reports whether the email is in the ADMIN_EMAILS whitelist.
+// This is the single source of truth for admin status (not the DB column).
+func IsAdminEmail(email string) bool {
 	adminEmails := os.Getenv("ADMIN_EMAILS")
 	if adminEmails == "" {
 		return false

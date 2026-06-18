@@ -46,9 +46,11 @@ func main() {
 
 	authService := service.NewAuthService(userRepo, oauthConfig)
 	orderService := service.NewOrderService(orderRepo, storageClient)
+	adminService := service.NewAdminService(orderRepo)
 
 	authHandler := handler.NewAuthHandler(authService, userRepo, oauthConfig)
 	orderHandler := handler.NewOrderHandler(orderService)
+	adminHandler := handler.NewAdminHandler(adminService)
 
 	// Router
 	r := gin.Default()
@@ -76,10 +78,12 @@ func main() {
 		api.GET("/orders/:id", orderHandler.GetTracking)
 	}
 
-	// Admin routes - Phase 3
+	// Admin routes
 	admin := r.Group("/api/admin", middleware.AuthRequired(), middleware.AdminRequired())
 	{
-		_ = admin
+		admin.GET("/orders", adminHandler.ListOrders)
+		admin.GET("/orders/:id", adminHandler.GetOrderDetail)
+		admin.PATCH("/orders/:id/status", adminHandler.UpdateStatus)
 	}
 
 	port := os.Getenv("PORT")

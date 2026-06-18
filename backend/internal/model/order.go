@@ -28,17 +28,28 @@ func (s OrderStatus) CanTransitionTo(next OrderStatus) bool {
 	return false
 }
 
+type PaymentStatus string
+
+const (
+	PaymentUnpaid  PaymentStatus = "UNPAID"
+	PaymentPending PaymentStatus = "PENDING"
+	PaymentPaid    PaymentStatus = "PAID"
+	PaymentFailed  PaymentStatus = "FAILED"
+)
+
 type Order struct {
-	ID          string      `json:"id"`
-	UserID      string      `json:"user_id"`
-	Whatsapp    string      `json:"whatsapp"`
-	PlateNumber string      `json:"plate_number"`
-	FrameNumber string      `json:"frame_number"`
-	KtpURL      string      `json:"ktp_url"`
-	StnkURL     string      `json:"stnk_url"`
-	Status      OrderStatus `json:"status"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
+	ID            string        `json:"id"`
+	UserID        string        `json:"user_id"`
+	Whatsapp      string        `json:"whatsapp"`
+	PlateNumber   string        `json:"plate_number"`
+	FrameNumber   string        `json:"frame_number"`
+	KtpURL        string        `json:"ktp_url"`
+	StnkURL       string        `json:"stnk_url"`
+	Status        OrderStatus   `json:"status"`
+	Amount        int           `json:"amount"`
+	PaymentStatus PaymentStatus `json:"payment_status"`
+	CreatedAt     time.Time     `json:"created_at"`
+	UpdatedAt     time.Time     `json:"updated_at"`
 }
 
 type OrderStatusLog struct {

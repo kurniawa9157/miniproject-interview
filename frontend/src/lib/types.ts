@@ -17,6 +17,8 @@ export interface OrderStatusLog {
   created_at: string
 }
 
+export type PaymentStatus = 'UNPAID' | 'PENDING' | 'PAID' | 'FAILED'
+
 export interface Order {
   id: string
   user_id: string
@@ -26,6 +28,8 @@ export interface Order {
   ktp_url: string
   stnk_url: string
   status: OrderStatus
+  amount: number
+  payment_status: PaymentStatus
   created_at: string
   updated_at: string
 }

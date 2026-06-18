@@ -4,9 +4,10 @@ import { AxiosError } from 'axios'
 import api from '@/lib/axios'
 import type { OrderWithLogs } from '@/lib/types'
 import { STATUS_LABELS } from '@/lib/types'
-import { formatDateTime } from '@/lib/format'
+import { formatDateTime, formatRupiah } from '@/lib/format'
 import { StatusBadge } from '@/components/StatusBadge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 export function TrackingPage() {
   const { id } = useParams()
@@ -69,8 +70,31 @@ export function TrackingPage() {
           <DetailRow label="Nomor Plat" value={order.plate_number} />
           <DetailRow label="Nomor WhatsApp" value={order.whatsapp} />
           <DetailRow label="5 Digit Rangka" value={order.frame_number} />
+          <DetailRow label="Biaya" value={formatRupiah(order.amount)} />
         </CardContent>
       </Card>
+
+      {order.payment_status !== 'PAID' && order.status !== 'CANCELLED' && (
+        <Card>
+          <CardContent className="flex items-center justify-between py-4">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Pembayaran belum lunas</p>
+              <p className="text-sm text-gray-500">
+                Selesaikan pembayaran {formatRupiah(order.amount)} untuk memproses order.
+              </p>
+            </div>
+            <Button asChild>
+              <Link to={`/orders/${order.id}/pay`}>Bayar</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {order.payment_status === 'PAID' && (
+        <div className="rounded-md bg-green-50 p-3 text-center text-sm text-green-700">
+          Pembayaran lunas ✓
+        </div>
+      )}
 
       <Card>
         <CardHeader>

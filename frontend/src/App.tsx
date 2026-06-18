@@ -6,6 +6,7 @@ import { LoginPage } from '@/pages/LoginPage'
 import { OrderFormPage } from '@/pages/OrderFormPage'
 import { MyOrdersPage } from '@/pages/MyOrdersPage'
 import { TrackingPage } from '@/pages/TrackingPage'
+import { PaymentPage } from '@/pages/PaymentPage'
 import { AdminDashboard } from '@/pages/admin/AdminDashboard'
 import { AdminOrderDetail } from '@/pages/admin/AdminOrderDetail'
 
@@ -22,6 +23,7 @@ function App() {
               <Route path="/orders/new" element={<OrderFormPage />} />
               <Route path="/orders" element={<MyOrdersPage />} />
               <Route path="/orders/:id" element={<TrackingPage />} />
+              <Route path="/orders/:id/pay" element={<PaymentPage />} />
             </Route>
           </Route>
 

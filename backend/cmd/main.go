@@ -13,6 +13,7 @@ import (
 	"jumpapay/backend/internal/service"
 	"jumpapay/backend/pkg/database"
 	googleoauth "jumpapay/backend/pkg/oauth"
+	"jumpapay/backend/pkg/payment"
 	"jumpapay/backend/pkg/storage"
 )
 
@@ -40,6 +41,7 @@ func main() {
 
 	// Dependencies
 	oauthConfig := googleoauth.NewGoogleConfig()
+	midtransClient := payment.NewClient()
 
 	userRepo := repository.NewUserRepository(db)
 	orderRepo := repository.NewOrderRepository(db)
@@ -47,10 +49,12 @@ func main() {
 	authService := service.NewAuthService(userRepo, oauthConfig)
 	orderService := service.NewOrderService(orderRepo, storageClient)
 	adminService := service.NewAdminService(orderRepo)
+	paymentService := service.NewPaymentService(orderRepo, midtransClient)
 
 	authHandler := handler.NewAuthHandler(authService, userRepo, oauthConfig)
 	orderHandler := handler.NewOrderHandler(orderService)
 	adminHandler := handler.NewAdminHandler(adminService)
+	paymentHandler := handler.NewPaymentHandler(paymentService)
 
 	// Router
 	r := gin.Default()
@@ -60,6 +64,9 @@ func main() {
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "pong"})
 	})
+
+	// Midtrans webhook (public - dipanggil oleh Midtrans, diverifikasi via signature)
+	r.POST("/payment/notification", paymentHandler.Notification)
 
 	// Auth routes
 	auth := r.Group("/auth")
@@ -76,6 +83,10 @@ func main() {
 		api.POST("/orders", orderHandler.Submit)
 		api.GET("/orders", orderHandler.ListMine)
 		api.GET("/orders/:id", orderHandler.GetTracking)
+
+		// Payment (bonus)
+		api.GET("/payment/config", paymentHandler.Config)
+		api.POST("/orders/:id/pay", paymentHandler.CreatePayment)
 	}
 
 	// Admin routes

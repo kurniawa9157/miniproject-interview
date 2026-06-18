@@ -65,7 +65,8 @@ func (r *OrderRepository) Create(ctx context.Context, o *model.Order) error {
 func (r *OrderRepository) FindByID(ctx context.Context, id, ownerUserID string) (*model.OrderWithLogs, error) {
 	row := r.db.QueryRow(ctx, `
 		SELECT o.id, o.user_id, o.whatsapp, o.plate_number, o.frame_number,
-		       o.ktp_url, o.stnk_url, o.status, o.created_at, o.updated_at,
+		       o.ktp_url, o.stnk_url, o.status, o.amount, o.payment_status,
+		       o.created_at, o.updated_at,
 		       u.name, u.email
 		FROM orders o
 		JOIN users u ON u.id = o.user_id
@@ -75,7 +76,8 @@ func (r *OrderRepository) FindByID(ctx context.Context, id, ownerUserID string) 
 	var o model.OrderWithLogs
 	err := row.Scan(
 		&o.ID, &o.UserID, &o.Whatsapp, &o.PlateNumber, &o.FrameNumber,
-		&o.KtpURL, &o.StnkURL, &o.Status, &o.CreatedAt, &o.UpdatedAt,
+		&o.KtpURL, &o.StnkURL, &o.Status, &o.Amount, &o.PaymentStatus,
+		&o.CreatedAt, &o.UpdatedAt,
 		&o.UserName, &o.UserEmail,
 	)
 	if err != nil {
@@ -99,7 +101,7 @@ func (r *OrderRepository) FindByID(ctx context.Context, id, ownerUserID string) 
 func (r *OrderRepository) FindByUserID(ctx context.Context, userID string) ([]model.Order, error) {
 	rows, err := r.db.Query(ctx, `
 		SELECT id, user_id, whatsapp, plate_number, frame_number,
-		       ktp_url, stnk_url, status, created_at, updated_at
+		       ktp_url, stnk_url, status, amount, payment_status, created_at, updated_at
 		FROM orders
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -114,7 +116,7 @@ func (r *OrderRepository) FindByUserID(ctx context.Context, userID string) ([]mo
 		var o model.Order
 		if err := rows.Scan(
 			&o.ID, &o.UserID, &o.Whatsapp, &o.PlateNumber, &o.FrameNumber,
-			&o.KtpURL, &o.StnkURL, &o.Status, &o.CreatedAt, &o.UpdatedAt,
+			&o.KtpURL, &o.StnkURL, &o.Status, &o.Amount, &o.PaymentStatus, &o.CreatedAt, &o.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -127,7 +129,8 @@ func (r *OrderRepository) FindByUserID(ctx context.Context, userID string) ([]mo
 func (r *OrderRepository) ListAll(ctx context.Context, statusFilter string) ([]model.OrderWithLogs, error) {
 	query := `
 		SELECT o.id, o.user_id, o.whatsapp, o.plate_number, o.frame_number,
-		       o.ktp_url, o.stnk_url, o.status, o.created_at, o.updated_at,
+		       o.ktp_url, o.stnk_url, o.status, o.amount, o.payment_status,
+		       o.created_at, o.updated_at,
 		       u.name, u.email
 		FROM orders o
 		JOIN users u ON u.id = o.user_id
@@ -150,7 +153,8 @@ func (r *OrderRepository) ListAll(ctx context.Context, statusFilter string) ([]m
 		var o model.OrderWithLogs
 		if err := rows.Scan(
 			&o.ID, &o.UserID, &o.Whatsapp, &o.PlateNumber, &o.FrameNumber,
-			&o.KtpURL, &o.StnkURL, &o.Status, &o.CreatedAt, &o.UpdatedAt,
+			&o.KtpURL, &o.StnkURL, &o.Status, &o.Amount, &o.PaymentStatus,
+			&o.CreatedAt, &o.UpdatedAt,
 			&o.UserName, &o.UserEmail,
 		); err != nil {
 			return nil, err
@@ -184,6 +188,80 @@ func (r *OrderRepository) UpdateStatus(ctx context.Context, orderID, changedByUs
 	}
 
 	return tx.Commit(ctx)
+}
+
+// SetPaymentToken stores the Midtrans Snap token and marks payment as PENDING.
+func (r *OrderRepository) SetPaymentToken(ctx context.Context, orderID, token string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE orders SET payment_token = $1, payment_status = $2, updated_at = NOW()
+		WHERE id = $3
+	`, token, model.PaymentPending, orderID)
+	if err != nil {
+		return fmt.Errorf("set payment token: %w", err)
+	}
+	return nil
+}
+
+// MarkPaid sets payment_status = PAID and auto-promotes the order from
+// PENDING to IN_PROCESS (with a status log). Idempotent: skips if already paid.
+func (r *OrderRepository) MarkPaid(ctx context.Context, orderID string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	var paymentStatus model.PaymentStatus
+	var orderStatus model.OrderStatus
+	var userID string
+	err = tx.QueryRow(ctx,
+		`SELECT payment_status, status, user_id FROM orders WHERE id = $1 FOR UPDATE`,
+		orderID,
+	).Scan(&paymentStatus, &orderStatus, &userID)
+	if err != nil {
+		return fmt.Errorf("lock order: %w", err)
+	}
+
+	if paymentStatus == model.PaymentPaid {
+		return nil // already processed
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE orders SET payment_status = $1, updated_at = NOW() WHERE id = $2
+	`, model.PaymentPaid, orderID)
+	if err != nil {
+		return fmt.Errorf("update payment status: %w", err)
+	}
+
+	// Auto-promote PENDING -> IN_PROCESS after successful payment.
+	if orderStatus == model.StatusPending {
+		_, err = tx.Exec(ctx, `
+			UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2
+		`, model.StatusInProcess, orderID)
+		if err != nil {
+			return fmt.Errorf("promote status: %w", err)
+		}
+		_, err = tx.Exec(ctx, `
+			INSERT INTO order_status_logs (order_id, status, changed_by)
+			VALUES ($1, $2, $3)
+		`, orderID, model.StatusInProcess, userID)
+		if err != nil {
+			return fmt.Errorf("insert status log: %w", err)
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
+// MarkPaymentFailed sets payment_status = FAILED.
+func (r *OrderRepository) MarkPaymentFailed(ctx context.Context, orderID string) error {
+	_, err := r.db.Exec(ctx, `
+		UPDATE orders SET payment_status = $1, updated_at = NOW() WHERE id = $2
+	`, model.PaymentFailed, orderID)
+	if err != nil {
+		return fmt.Errorf("mark payment failed: %w", err)
+	}
+	return nil
 }
 
 func (r *OrderRepository) findLogs(ctx context.Context, orderID string) ([]model.OrderStatusLog, error) {

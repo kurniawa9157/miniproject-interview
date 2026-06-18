@@ -64,7 +64,8 @@ export function OrderFormPage() {
       form.append('stnk', stnk!)
 
       const { data } = await api.post<{ data: Order }>('/api/orders', form)
-      navigate(`/orders/${data.data.id}`, { replace: true })
+      // Arahkan ke konfirmasi pembayaran (bonus Midtrans).
+      navigate(`/orders/${data.data.id}/pay`, { replace: true })
     } catch (err) {
       const axiosErr = err as AxiosError<{ error: string }>
       setSubmitError(axiosErr.response?.data?.error ?? 'Gagal membuat order. Coba lagi.')

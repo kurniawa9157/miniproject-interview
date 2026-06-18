@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/middleware"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/repository"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/service"
+	"jumpapay/backend/internal/middleware"
+	"jumpapay/backend/internal/repository"
+	"jumpapay/backend/internal/service"
 	"golang.org/x/oauth2"
 )
 

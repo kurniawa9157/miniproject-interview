@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	googleoauth "github.com/kurniawa9157/miniproject-interview/backend/pkg/oauth"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/model"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/repository"
+	googleoauth "jumpapay/backend/pkg/oauth"
+	"jumpapay/backend/internal/model"
+	"jumpapay/backend/internal/repository"
 	"golang.org/x/oauth2"
 )
 

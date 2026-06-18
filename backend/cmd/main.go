@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"context"
@@ -7,12 +7,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/handler"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/middleware"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/repository"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/service"
-	"github.com/kurniawa9157/miniproject-interview/backend/pkg/database"
-	googleoauth "github.com/kurniawa9157/miniproject-interview/backend/pkg/oauth"
+	"jumpapay/backend/internal/handler"
+	"jumpapay/backend/internal/middleware"
+	"jumpapay/backend/internal/repository"
+	"jumpapay/backend/internal/service"
+	"jumpapay/backend/pkg/database"
+	googleoauth "jumpapay/backend/pkg/oauth"
+	"jumpapay/backend/pkg/storage"
 )
 
 func main() {
@@ -30,11 +31,24 @@ func main() {
 	defer db.Close()
 	log.Println("Database connected")
 
+	// Storage
+	storageClient, err := storage.NewClient()
+	if err != nil {
+		log.Fatalf("Failed to connect to MinIO: %v", err)
+	}
+	log.Println("Storage connected")
+
 	// Dependencies
 	oauthConfig := googleoauth.NewGoogleConfig()
+
 	userRepo := repository.NewUserRepository(db)
+	orderRepo := repository.NewOrderRepository(db)
+
 	authService := service.NewAuthService(userRepo, oauthConfig)
+	orderService := service.NewOrderService(orderRepo, storageClient)
+
 	authHandler := handler.NewAuthHandler(authService, userRepo, oauthConfig)
+	orderHandler := handler.NewOrderHandler(orderService)
 
 	// Router
 	r := gin.Default()
@@ -54,14 +68,15 @@ func main() {
 		auth.GET("/me", middleware.AuthRequired(), authHandler.Me)
 	}
 
-	// API routes (protected)
+	// Customer API routes
 	api := r.Group("/api", middleware.AuthRequired())
 	{
-		// Orders — Phase 2
-		_ = api
+		api.POST("/orders", orderHandler.Submit)
+		api.GET("/orders", orderHandler.ListMine)
+		api.GET("/orders/:id", orderHandler.GetTracking)
 	}
 
-	// Admin routes — Phase 3
+	// Admin routes - Phase 3
 	admin := r.Group("/api/admin", middleware.AuthRequired(), middleware.AdminRequired())
 	{
 		_ = admin

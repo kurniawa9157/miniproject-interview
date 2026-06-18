@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/service"
+	"jumpapay/backend/internal/service"
 )
 
 const UserIDKey = "user_id"

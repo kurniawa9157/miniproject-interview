@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/kurniawa9157/miniproject-interview/backend/internal/model"
+	"jumpapay/backend/internal/model"
 )
 
 type UserRepository struct {

@@ -12,10 +12,10 @@ import (
 )
 
 type Client struct {
-	mc         *minio.Client
-	bucket     string
-	endpoint   string
-	useSSL     bool
+	mc       *minio.Client
+	bucket   string
+	endpoint string
+	useSSL   bool
 }
 
 func NewClient() (*Client, error) {
@@ -37,7 +37,44 @@ func NewClient() (*Client, error) {
 		return nil, fmt.Errorf("minio.New: %w", err)
 	}
 
-	return &Client{mc: mc, bucket: bucket, endpoint: endpoint, useSSL: useSSL}, nil
+	c := &Client{mc: mc, bucket: bucket, endpoint: endpoint, useSSL: useSSL}
+
+	if err := c.ensureBucket(context.Background()); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// ensureBucket creates the bucket if it doesn't exist and sets a public-read
+// policy so uploaded KTP/STNK can be opened via URL by admin.
+func (c *Client) ensureBucket(ctx context.Context) error {
+	exists, err := c.mc.BucketExists(ctx, c.bucket)
+	if err != nil {
+		return fmt.Errorf("bucket exists check: %w", err)
+	}
+
+	if !exists {
+		if err := c.mc.MakeBucket(ctx, c.bucket, minio.MakeBucketOptions{}); err != nil {
+			return fmt.Errorf("make bucket: %w", err)
+		}
+	}
+
+	policy := fmt.Sprintf(`{
+		"Version": "2012-10-17",
+		"Statement": [{
+			"Effect": "Allow",
+			"Principal": {"AWS": ["*"]},
+			"Action": ["s3:GetObject"],
+			"Resource": ["arn:aws:s3:::%s/*"]
+		}]
+	}`, c.bucket)
+
+	if err := c.mc.SetBucketPolicy(ctx, c.bucket, policy); err != nil {
+		return fmt.Errorf("set bucket policy: %w", err)
+	}
+
+	return nil
 }
 
 // UploadFile uploads a file and returns its public URL.

@@ -1,11 +1,37 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-miniproject}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Migration jalan otomatis saat volume pertama kali dibuat (urut alfabetis)
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-miniproject}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - jumpapay
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
     env_file:
       - ./backend/.env
+    environment:
+      # Override DB_HOST ke service "db" (menimpa nilai di backend/.env yang
+      # dipakai untuk dev lokal). Backend connect ke postgres via network.
+      DB_HOST: db
     expose:
       - "8080" # hanya internal network, tidak di-publish ke host
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - jumpapay
     restart: unless-stopped
@@ -24,6 +50,9 @@ services:
     networks:
       - jumpapay
     restart: unless-stopped
+
+volumes:
+  pgdata:
 
 networks:
   jumpapay:

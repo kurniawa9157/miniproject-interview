@@ -1,7 +1,12 @@
 import axios from 'axios'
 
+// In production behind a reverse proxy, set VITE_API_URL="" so requests are
+// relative (/api/...) and proxied to the backend on the same origin. The
+// `?? 'http://localhost:8080'` only applies when the var is undefined (dev).
+const apiBaseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: apiBaseURL,
   withCredentials: true,
 })
 

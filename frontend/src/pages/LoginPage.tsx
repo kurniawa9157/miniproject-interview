@@ -4,7 +4,8 @@ import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+// Empty string in production => relative /auth/google (proxied to backend).
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 export function LoginPage() {
   const { user, loading } = useAuth()

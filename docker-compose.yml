@@ -1,0 +1,30 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env
+    expose:
+      - "8080" # hanya internal network, tidak di-publish ke host
+    networks:
+      - jumpapay
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Kosong = API URL relatif, diproxy nginx ke backend (satu origin)
+        VITE_API_URL: ""
+    ports:
+      # Arahkan Nginx Proxy Manager ke <host>:8090
+      - "8090:80"
+    depends_on:
+      - backend
+    networks:
+      - jumpapay
+    restart: unless-stopped
+
+networks:
+  jumpapay:
+    driver: bridge

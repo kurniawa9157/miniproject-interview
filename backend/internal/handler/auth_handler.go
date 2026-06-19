@@ -46,7 +46,10 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 
+	// Frontend & backend di-serve satu origin (via reverse proxy), jadi
+	// SameSite=Lax sudah cukup. Secure aktif di produksi (HTTPS).
 	secure := os.Getenv("APP_ENV") == "production"
+	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("token", token, int((7 * 24 * time.Hour).Seconds()), "/", "", secure, true)
 
 	frontendURL := os.Getenv("FRONTEND_URL")

@@ -44,7 +44,7 @@ services:
         VITE_API_URL: ""
     ports:
       # Arahkan Nginx Proxy Manager ke <host>:8090
-      - "8090:80"
+      - "8877:80"
     depends_on:
       - backend
     networks:

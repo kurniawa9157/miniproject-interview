@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -57,6 +58,7 @@ func (h *PaymentHandler) Notification(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "invalid signature"})
 			return
 		}
+		log.Printf("payment notification failed (order=%s status=%s): %v", n.OrderID, n.TransactionStatus, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal memproses notifikasi"})
 		return
 	}

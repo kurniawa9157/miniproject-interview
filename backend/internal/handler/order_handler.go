@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"regexp"
 	"strings"
@@ -96,6 +97,7 @@ func (h *OrderHandler) Submit(c *gin.Context) {
 		StnkHeader:  stnkHeader,
 	})
 	if err != nil {
+		log.Printf("submit order failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "gagal membuat order"})
 		return
 	}

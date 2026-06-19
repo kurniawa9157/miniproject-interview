@@ -14,6 +14,9 @@ import (
 	"jumpapay/backend/pkg/storage"
 )
 
+// DefaultOrderAmount is the hardcoded STNK renewal fee (Rp 150.000) per the spec.
+const DefaultOrderAmount = 150000
+
 type SubmitOrderInput struct {
 	UserID      string
 	Whatsapp    string
@@ -51,16 +54,18 @@ func (s *OrderService) Submit(ctx context.Context, input SubmitOrderInput) (*mod
 	}
 
 	order := &model.Order{
-		ID:          orderID,
-		UserID:      input.UserID,
-		Whatsapp:    input.Whatsapp,
-		PlateNumber: input.PlateNumber,
-		FrameNumber: strings.ToUpper(input.FrameNumber),
-		KtpURL:      ktpURL,
-		StnkURL:     stnkURL,
-		Status:      model.StatusPending,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		ID:            orderID,
+		UserID:        input.UserID,
+		Whatsapp:      input.Whatsapp,
+		PlateNumber:   input.PlateNumber,
+		FrameNumber:   strings.ToUpper(input.FrameNumber),
+		KtpURL:        ktpURL,
+		StnkURL:       stnkURL,
+		Status:        model.StatusPending,
+		Amount:        DefaultOrderAmount,
+		PaymentStatus: model.PaymentUnpaid,
+		CreatedAt:     time.Now(),
+		UpdatedAt:     time.Now(),
 	}
 
 	if err := s.orderRepo.Create(ctx, order); err != nil {

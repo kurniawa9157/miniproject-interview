@@ -18,20 +18,23 @@ func NewOrderRepository(db *pgxpool.Pool) *OrderRepository {
 }
 
 // GenerateID creates order ID in format JP-YYYYMMDD-XXXX.
+// Uses the max existing suffix for today + 1 (robust against deleted rows,
+// unlike COUNT(*) which can produce collisions after deletions).
 func (r *OrderRepository) GenerateID(ctx context.Context) (string, error) {
 	today := time.Now().Format("20060102")
 	prefix := fmt.Sprintf("JP-%s-", today)
 
-	var count int
+	var maxSuffix int
 	err := r.db.QueryRow(ctx,
-		`SELECT COUNT(*) FROM orders WHERE id LIKE $1`,
+		`SELECT COALESCE(MAX(CAST(SPLIT_PART(id, '-', 3) AS INTEGER)), 0)
+		 FROM orders WHERE id LIKE $1`,
 		prefix+"%",
-	).Scan(&count)
+	).Scan(&maxSuffix)
 	if err != nil {
-		return "", fmt.Errorf("count orders today: %w", err)
+		return "", fmt.Errorf("get max order suffix today: %w", err)
 	}
 
-	return fmt.Sprintf("%s%04d", prefix, count+1), nil
+	return fmt.Sprintf("%s%04d", prefix, maxSuffix+1), nil
 }
 
 // Create inserts a new order and its initial PENDING status log.
